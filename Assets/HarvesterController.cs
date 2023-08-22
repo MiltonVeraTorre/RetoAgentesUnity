@@ -32,7 +32,6 @@ public class HarvesterController : MonoBehaviour
 
         grid = GridController.Instance.grid;
         qLearningAgent = new QLearningAgent(grid);
-        qLearningAgent.LoadQTable(path);
         this.direction = -transform.right;
         this.detected = false;
     }
@@ -169,7 +168,7 @@ public class HarvesterController : MonoBehaviour
 
         if (detected)
         {
-            reward += 50;  // Recompensa por detectar un trigo
+            reward += 100;  // Recompensa por detectar un trigo
         }
         // else
         // {
@@ -178,7 +177,7 @@ public class HarvesterController : MonoBehaviour
 
         if (trigo > lastTrigo)
         {
-            reward += 200;  // Recompensa por haber recolectado trigo desde el último frame
+            reward += 500;  // Recompensa por haber recolectado trigo desde el último frame
         }
         else
         {
@@ -194,13 +193,13 @@ public class HarvesterController : MonoBehaviour
         // Penalización por cambios de dirección
         if (currentAction != lastAction)
         {
-            reward -= -5; // Penalización reducida por cambio de dirección
+            reward -= -20; // Penalización reducida por cambio de dirección
         }
 
         // Incentivar que el harvester mantenga su dirección aunque no haya detectado trigo
         if (trigo == lastTrigo && currentAction == lastAction)
         {
-            reward += 2;
+            reward += 5;
         }
 
         return reward;
