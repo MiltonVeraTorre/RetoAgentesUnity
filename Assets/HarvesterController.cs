@@ -199,7 +199,7 @@ public class HarvesterController : MonoBehaviour
         if (currentAction != lastAction)
         {
             reward -= 40; // Penalización reducida por cambio de dirección
-        }ñ
+        }
 
         return reward;
     }
