@@ -7,6 +7,8 @@ public class HarvesterController : MonoBehaviour
     private bool isMoving = false; // Indica si el cubo está en movimiento
     private Vector3 direction;
 
+    public static HarvesterController instance;
+
     private bool detected;
 
     public float viewAngle = 10f; // Ángulo total del campo de visión
@@ -24,11 +26,10 @@ public class HarvesterController : MonoBehaviour
 
     Grid<Cell> grid;
 
-    string path = System.IO.Path.Combine(Application.persistentDataPath, "Learning");
-
 
     void Start()
     {
+
         grid = GridController.Instance.grid;
         qLearningAgent = new QLearningAgent(grid);
         qLearningAgent.LoadQTable(path);
@@ -37,11 +38,6 @@ public class HarvesterController : MonoBehaviour
     }
 
 
-    private void OnDisable()
-    {
-        qLearningAgent.SaveQTable(path);
-    }
-
     void Update()
     {
 
@@ -49,25 +45,31 @@ public class HarvesterController : MonoBehaviour
         QLearningAgent.Action action = qLearningAgent.GetBestAction(currentState);
         currentAction = action;
 
+        // Si se detecto algo entonces continuamos en esa dirección
+        if (detected)
+        {
+            action = QLearningAgent.Action.MoveForward;
+        }
+
         // Obtener la decisión del QLearning
+
         switch (action)
         {
             case QLearningAgent.Action.MoveForward:
-                // Mueve el harvester hacia adelante
-                direction = transform.forward;
+                // Mueve el harvester hacia adelante o de otra manera en la dirección que estaba
                 transform.position += direction * moveSpeed * Time.deltaTime;
                 combustible -= moveSpeed * Time.deltaTime;
 
                 break;
             case QLearningAgent.Action.TurnLeft:
                 // Gira el harvester a la izquierda
-                direction = -transform.right;
+                direction = Quaternion.Euler(0, -90, 0) * direction;
                 transform.position += direction * moveSpeed * Time.deltaTime;
                 combustible -= moveSpeed * Time.deltaTime;
                 break;
             case QLearningAgent.Action.TurnRight:
                 // Gira el harvester a la derecha
-                direction = transform.right;
+                direction = Quaternion.Euler(0, 90, 0) * direction;
                 transform.position += direction * moveSpeed * Time.deltaTime;
                 combustible -= moveSpeed * Time.deltaTime;
                 break;
@@ -127,22 +129,16 @@ public class HarvesterController : MonoBehaviour
 
             if (Physics.Raycast(ray, out hit, detectionDistance))
             {
-                if (hit.collider.CompareTag("Tractor"))
+                if (hit.collider.CompareTag("Tractor") || hit.collider.CompareTag("Barrera"))
                 {
                     continue;
                 }
-                
+
                 objectDetected = true;
             }
         }
 
         this.detected = objectDetected;
-
-        if (!objectDetected)
-        {
-            // Cambio de dirección en 90 grados hacia la derecha
-            direction = Quaternion.Euler(0, 90, 0) * direction;
-        }
     }
 
 
@@ -175,30 +171,36 @@ public class HarvesterController : MonoBehaviour
         {
             reward += 50;  // Recompensa por detectar un trigo
         }
-        else
-        {
-            reward -= 20; // Castigo por no detectar un trigo
-        }
+        // else
+        // {
+        //     reward -= 10; // Castigo por no detectar un trigo
+        // }
 
         if (trigo > lastTrigo)
         {
-            reward += 100;  // Recompensa por haber recolectado trigo desde el último frame
+            reward += 200;  // Recompensa por haber recolectado trigo desde el último frame
         }
         else
         {
-            reward -= 1;  // Penalización reducida si el trigo no ha aumentado desde el último frame
+            reward -= 2;  // Penalización reducida si el trigo no ha aumentado desde el último frame
         }
 
         // //Si detecto un trigo y siguió hacia esa dirección
         if (currentAction == lastAction && trigo > lastTrigo)
         {
-            reward += 70;  // Recompensa reducida por mantener la misma acción
+            reward += 150;  // Recompensa reducida por mantener la misma acción
         }
 
         // Penalización por cambios de dirección
         if (currentAction != lastAction)
         {
-            reward -= 40; // Penalización reducida por cambio de dirección
+            reward -= -5; // Penalización reducida por cambio de dirección
+        }
+
+        // Incentivar que el harvester mantenga su dirección aunque no haya detectado trigo
+        if (trigo == lastTrigo && currentAction == lastAction)
+        {
+            reward += 2;
         }
 
         return reward;

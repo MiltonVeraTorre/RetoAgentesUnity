@@ -17,10 +17,10 @@ public class QLearningAgent
     }
 
     private Dictionary<string, Dictionary<Action, float>> QTable = new Dictionary<string, Dictionary<Action, float>>();
-    private float learningRate = 0.2f;
+    private float learningRate = 0.1f;
     private float discountFactor = 0.9f;
-    private float explorationRate = 0.1f;
-    private float explorationDecay = 0.995f;
+    private float explorationRate = 0.05f;
+    private float explorationDecay = 0.998f;
 
     public QLearningAgent(Grid<Cell> grid)
     {
@@ -28,20 +28,6 @@ public class QLearningAgent
         InitializeQTable();
     }
 
-    public void SaveQTable(string path)
-    {
-        // string json = JsonUtility.ToJson(QTable);
-        // File.WriteAllText(path, json);
-    }
-
-    public void LoadQTable(string path)
-    {
-        // if (File.Exists(path))
-        // {
-        //     string json = File.ReadAllText(path);
-        //     QTable = JsonUtility.FromJson<Dictionary<string, Dictionary<Action, float>>>(json);
-        // }
-    }
 
     private void InitializeQTable()
     {
@@ -51,7 +37,7 @@ public class QLearningAgent
             {
                 for (int y = 0; y < grid.height; y++)
                 {
-                    Debug.Log("x "+x+" y: "+y);
+
                     State state = new State(x, y, false);
                     if (!QTable.ContainsKey(state.ToString()))
                     {
@@ -90,7 +76,7 @@ public class QLearningAgent
 
     public void UpdateQValue(State oldState, Action action, float reward, State newState)
     {
-        Debug.Log("Retroalimentacion "+reward);
+        Debug.Log("Retroalimentacion " + reward);
         float oldQValue = QTable[oldState.ToString()][action];
         float newQValue = (1 - learningRate) * oldQValue + learningRate * (reward + discountFactor * GetMaxQValue(newState));
         QTable[oldState.ToString()][action] = newQValue;
