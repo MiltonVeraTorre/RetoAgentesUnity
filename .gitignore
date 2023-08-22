@@ -1,0 +1,33 @@
+# Archivos de proyecto
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+
+# Archivos de usuario
+*.swp
+*.*~
+ProjectSettings/UnityConnectSettings.asset
+
+# Archivos de Rider (IDE)
+[Aa]ssets/Plugins/Editor/JetBrains*
+
+# VS Code
+.vscode/
+
+# Windows
+[Tt]humbs.db
+*.bak
+*.swp
+*~.nib
+desktop.ini
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+_MACOSX
