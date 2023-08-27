@@ -5,14 +5,14 @@ public class Grid<T>
 {
     public int width;
     public int height;
-    private float cellSize;
+    public float cellSize;
     private T[,] gridArray;
 
     
 
     public Grid(Terrain activeTerrain)
     {
-        this.cellSize = 50f;
+        this.cellSize = 70f;
 
         // Obtener el terreno activo
         if (activeTerrain != null)
