@@ -6,7 +6,7 @@ public class GridController : MonoBehaviour
     public static GridController Instance { get; private set; } // Singleton instance
 
     public Terrain terrain; // Referencia al terreno, asigna esto en el inspector
-    public Grid<Cell> grid;
+    public Grid grid;
 
 
     private void Awake()
@@ -24,7 +24,7 @@ public class GridController : MonoBehaviour
 
             if (terrain != null)
             {
-                grid = new Grid<Cell>(terrain);
+                grid = new Grid(terrain);
             }
             else
             {

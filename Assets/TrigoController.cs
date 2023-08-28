@@ -3,7 +3,7 @@ using UnityEngine;
 public class TrigoController : MonoBehaviour
 {
     public GameObject trigoPrefab; // Asigna tu prefab de trigo en el inspector
-    private Grid<Cell> grid;
+    private Grid grid;
     private int[][] campo;
 
     private void Start()
@@ -61,8 +61,16 @@ public class TrigoController : MonoBehaviour
                 {
                     Vector3 worldPos = grid.GetWorldPosition(i, j) + new Vector3(halfCellSize, 20f, halfCellSize);
                     Instantiate(trigoPrefab, worldPos, Quaternion.identity);
+                    grid.SetValue(i, j, 1);
+                }
+                else
+                {
+                    grid.SetValue(i, j, 0);
+
                 }
             }
         }
+
+        grid.printGrid();
     }
 }

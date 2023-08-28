@@ -4,54 +4,69 @@ using UnityEngine;
 
 public class TractorController : MonoBehaviour
 {
-    public Transform targetObject; // Objeto que el tractor seguirá
-    public float speed = 5.0f; // Velocidad a la que el tractor se moverá hacia el objeto
+    public Transform targetObject;
+    public float speed = 5.0f;
 
     public float combustible = 10000;
     public float trigo = 0;
 
-    private HarvesterController harvester; // Referencia al otro harvester
+    private HarvesterController harvester;
+    private Grid grid; // Referencia a la clase Grid
+
+    private List<Vector3> pathToFollow;
+    private int currentPathIndex;
 
     void Start()
     {
-        // Intenta obtener el script HarvesterController del objeto objetivo
+        // No generamos el camino en el Start
         if (targetObject != null)
         {
             harvester = targetObject.GetComponent<HarvesterController>();
+            grid = GridController.Instance.grid;
+            SearchForHarvester();
         }
     }
 
     void Update()
     {
         MoverAlHarvester();
+    }
 
+    public void SearchForHarvester()
+    {
+        if (targetObject != null)
+        {
+            int gridX,gridY;
+            grid.GetXY(targetObject.position, out gridX, out gridY);
+
+            pathToFollow = grid.FindPathToTarget(transform.position,gridX, gridY);
+            currentPathIndex = 0;
+        }
     }
 
     void MoverAlHarvester()
     {
-        // Si no hay un objeto objetivo, no hagas nada
-        if (targetObject == null) return;
+        if (targetObject == null || pathToFollow == null || pathToFollow.Count == 0) return;
 
-        // Calcula la distancia hacia el objeto objetivo
-        float distanceToTarget = Vector3.Distance(transform.position, targetObject.position);
-
-        // Si la distancia es menor a 100 recolecta trigo
-        if (distanceToTarget < 100f && harvester != null)
+        // Si hemos llegado al punto actual del camino, pasa al siguiente punto
+        if (Vector3.Distance(transform.position, pathToFollow[currentPathIndex]) < 1f)
         {
-            float amountToTransfer = 1 * Time.deltaTime; // Puedes ajustar esta cantidad según lo que necesites
-            trigo += amountToTransfer;
-            harvester.TransferTrigoToTractor(amountToTransfer);
-            return;
+            currentPathIndex++;
+            if (currentPathIndex >= pathToFollow.Count) // Si hemos llegado al final del camino
+            {
+                pathToFollow = null; // Puedes generar un nuevo camino si es necesario
+                return;
+            }
         }
 
-        // Calcula la dirección hacia el objeto objetivo
-        Vector3 directionToTarget = (targetObject.position - transform.position).normalized;
+        // Calcula la dirección hacia el siguiente punto del camino
+        Vector3 directionToTarget = (pathToFollow[currentPathIndex] - transform.position).normalized;
 
         // Mueve el tractor en esa dirección
         transform.position += directionToTarget * speed * Time.deltaTime;
         combustible -= speed * Time.deltaTime;
 
-        // Opcional: Hacer que el tractor mire hacia el objeto objetivo
-        transform.LookAt(targetObject);
+        // Hacer que el tractor mire hacia el siguiente punto del camino
+        transform.LookAt(pathToFollow[currentPathIndex]);
     }
 }
