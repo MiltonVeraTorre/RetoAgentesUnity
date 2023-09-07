@@ -59,8 +59,14 @@ public class TrigoController : MonoBehaviour
             {
                 if (campo[i][j] == 1)
                 {
-                    Vector3 worldPos = grid.GetWorldPosition(i, j) + new Vector3(halfCellSize, 20f, halfCellSize);
-                    Instantiate(trigoPrefab, worldPos, Quaternion.identity);
+                    Vector3 worldPos = grid.GetWorldPosition(i, j);
+                    GameObject trigoInstance = Instantiate(trigoPrefab, worldPos, Quaternion.identity);
+
+                    // Agrega un BoxCollider al objeto instanciado y configura sus propiedades
+                    BoxCollider boxCollider = trigoInstance.AddComponent<BoxCollider>();
+                    boxCollider.center = new Vector3(0, 40, 0);
+                    boxCollider.size = new Vector3(20, 80, 15);
+
                     grid.SetValue(i, j, 1);
                 }
                 else

@@ -9,8 +9,11 @@ public class HarvesterController : MonoBehaviour
     // Patron singleton
     public static HarvesterController instance;
 
+    // Variables de numero
+    public int numero;
+
     // Variables de la visión
-    public float viewAngle = 90f; // Ángulo total del campo de visión
+    public float viewAngle = 70f; // Ángulo total del campo de visión
     public int numberOfRays = 8; // Número de rayos dentro del ángulo
 
     bool trigoLeft;
@@ -20,22 +23,27 @@ public class HarvesterController : MonoBehaviour
     // Variables directas del harvester
     int gridX;
     int gridY;
-    private float combustible = 1000f;
-    private float trigo = 0;
+    public float combustible = 1000f;
+    public float trigo = 0;
 
-    private int max_trigo = 132;
-    private Vector3 direction;
-    public float lastTrigo = 0;
+    public int max_trigo = 10;
+    public Vector3 direction;
+    private float lastTrigo = 0;
 
     private float tasaDeGasto = 0.1f;
 
+    Vector3 position;
+
     // Variables de movimiento
     private Vector3 target;
-    private bool activeTarget;
+    public bool activeTarget;
+    public Vector3 negoTarget;
+    public bool negoActiveTarget;
 
     private float rotationSpeed = 90.0f;
 
-    public float moveSpeed = 20f; // Velocidad de movimiento del cubo
+    public float moveSpeed = 30f; // Velocidad de movimiento del cubo
+
 
 
     // Variables para el QLearning
@@ -71,14 +79,14 @@ public class HarvesterController : MonoBehaviour
     void Start()
     {
 
-        Debug.Log("Simulacion iniciada");
-
         grid = GridController.Instance.grid;
         this.direction = -transform.forward;
         this.action = "TurnLeft";
         this.detected = false;
         this.startTime = Time.time;
         this.activeTarget = false;
+        this.negoActiveTarget = false;
+        position = this.transform.position;
 
         Socket();
 
@@ -94,9 +102,15 @@ public class HarvesterController : MonoBehaviour
         {
             return;
         }
+        // Si ya esta al máximo de trigo nos quedamos quietos
+        if (trigo >= max_trigo)
+        {
+            return;
+        }
+
 
         // Obtenemos la posicion del harvester en el grid
-        Vector3 position = this.transform.position;
+        position = this.transform.position;
         grid.GetXY(position, out gridX, out gridY);
 
         //Debug.Log(gridX + " " + gridY);
@@ -111,16 +125,23 @@ public class HarvesterController : MonoBehaviour
         currentState = GetCurrentState();
 
         // Imprimir el estado
-     
+        if (numero == 1)
+        {
+            // Debug.Log("Active target: "+activeTarget);
+            // Debug.Log("Nego Active target: "+negoActiveTarget);
+        }
+
+
+
 
         // Si detectamos trigo entonces nos movemos hacia el
-        if (activeTarget)
+        if (negoActiveTarget)
         {
             // Dirección ignorando la componente Y
-            Vector3 directionToTarget = new Vector3(target.x - transform.position.x, 0, target.z - transform.position.z).normalized;
-            float distanceToTarget = Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), new Vector3(target.x, 0, target.z));
+            Vector3 directionToTarget = new Vector3(negoTarget.x - transform.position.x, 0, negoTarget.z - transform.position.z).normalized;
+            float distanceToTarget = Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), new Vector3(negoTarget.x, 0, negoTarget.z));
 
-            if (distanceToTarget > 10f)
+            if (distanceToTarget > 15f)
             {
                 // Moverse directamente hacia el objetivo
                 direction = directionToTarget;
@@ -147,9 +168,9 @@ public class HarvesterController : MonoBehaviour
                     direction = -Vector3.forward;
                 }
 
-                if (distanceToTarget < 10f)
+                if (distanceToTarget < 15f)
                 {
-                    activeTarget = false;
+                    negoActiveTarget = false;
                 }
             }
 
@@ -158,6 +179,7 @@ public class HarvesterController : MonoBehaviour
         else if (detected)
         {
             moveToDirection();
+            activeTarget = false;
             action = "MoveForward";
             // Entrenamos el modelo para que aprenda que hay recompensa si sigue la accion
             newState = GetCurrentState();
@@ -165,11 +187,57 @@ public class HarvesterController : MonoBehaviour
         }
         else if (moveToTrigo())
         {
+            activeTarget = false;
             // Entrenamos el modelo para que aprenda que hay recompensa si sigue la accion
             newState = GetCurrentState();
             SendMessageToServer(UpdateQValue(currentState, action, 150, newState));
 
         }
+        else if (activeTarget)
+        {
+            // Dirección ignorando la componente Y
+            Vector3 directionToTarget = new Vector3(target.x - transform.position.x, 0, target.z - transform.position.z).normalized;
+            float distanceToTarget = Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), new Vector3(target.x, 0, target.z));
+
+
+            if (distanceToTarget > 15f)
+            {
+                // Moverse directamente hacia el objetivo
+                direction = directionToTarget;
+            }
+            else
+            {
+                // Alinear a la dirección más cercana (90 grados)
+                float angleDifference = Vector3.SignedAngle(transform.forward, directionToTarget, Vector3.up);
+
+                if (Mathf.Abs(angleDifference) <= 45) // Hacia el frente
+                {
+                    direction = Vector3.forward;
+                }
+                else if (angleDifference > 45 && angleDifference < 135) // Hacia la derecha
+                {
+                    direction = Vector3.right;
+                }
+                else if (angleDifference < -45 && angleDifference > -135) // Hacia la izquierda
+                {
+                    direction = Vector3.left;
+                }
+                else // Hacia atrás
+                {
+                    direction = -Vector3.forward;
+                }
+
+                if (distanceToTarget < 15f)
+                {
+                    activeTarget = false;
+                }
+            }
+
+            moveToDirection();
+        }
+
+
+
         // Si no se detecto ejecutamos el algoritmo de bfs
         else
         {
@@ -186,7 +254,13 @@ public class HarvesterController : MonoBehaviour
         // Si hay una colision entonces giramos hacia la derecha
         if (colision)
         {
+            // for(int i = 0;i<100;i++){
+            Debug.Log("Moviendo en direccion opuesta");
+            //     moveToOppositeDirection();
+            // }
+
             direction = Quaternion.Euler(0, 90, 0) * direction;
+
             moveToDirection();
             action = "TurnRight";
             colision = false;
@@ -199,7 +273,7 @@ public class HarvesterController : MonoBehaviour
 
 
 
-        DetectObjectsInFront(100);
+        DetectObjectsInFront(150f);
 
         rotateAtDirection();
 
@@ -220,13 +294,12 @@ public class HarvesterController : MonoBehaviour
             colision = true;
             return; // No continuar con el resto del código de OnCollisionEnter
         }
-        else
-        {
-            colision = false;
-        }
+
+        colision = false;
+
 
         // Si se trata del terreno entonces ignoramos la colision
-        if (collision.gameObject.CompareTag("Terreno") || collision.gameObject.CompareTag("Tractor"))
+        if (collision.gameObject.CompareTag("Terreno") || collision.gameObject.CompareTag("Tractor") || collision.gameObject.CompareTag("Harvester"))
         {
             return;
         }
@@ -244,7 +317,7 @@ public class HarvesterController : MonoBehaviour
 
 
 
-   void DetectObjectsInFront(float detectionDistance)
+    void DetectObjectsInFront(float detectionDistance)
     {
         if (!inicializado)
         {
@@ -268,8 +341,52 @@ public class HarvesterController : MonoBehaviour
 
             if (Physics.Raycast(ray, out hit, detectionDistance))
             {
-                if (hit.collider.CompareTag("Tractor") || hit.collider.CompareTag("Barrera"))
+                if (hit.collider.CompareTag("Barrera") || hit.collider.CompareTag("Tractor"))
                 {
+                    continue;
+                }
+                if (hit.collider.CompareTag("Harvester"))
+                {
+
+                    // Comprueba si el objeto detectado es el mismo que disparó el rayo
+                    if (hit.collider.transform == this.transform)
+                    {
+                        // Ignora la detección y continúa con la siguiente iteración del ciclo
+                        continue;
+                    }
+
+                    // Obtenemos el componente del objeto Harvester que contiene la variable combustible.
+                    // Supongamos que ese componente es de tipo HarvesterScript.
+                    HarvesterController harvesterComponent = hit.collider.GetComponent<HarvesterController>();
+
+                    // Ahora accedemos a la variable combustible del Harvester
+                    float harvesterCombustible = harvesterComponent.combustible;
+
+                    // Obtenemos el cuadrante y la posición
+
+                    Vector3 position = this.transform.position;
+
+                    // La condicional de la negociación será que se mueva el que tenga más gasolina
+                    if ((this.combustible > harvesterCombustible) || (this.combustible == harvesterCombustible && this.numero == 1))
+                    {
+                        // Haz algo si este objeto tiene más combustible que el Harvester
+                        negoTarget = grid.GetClosestTrigo(position, cuadrante);
+                        if (negoTarget != Vector3.zero)
+                        {
+                            negoActiveTarget = true;
+                        }
+                    }
+                    // Si no hay ningún objetivo para negociar entonces limpiamos las variables y le colocamos al otro harvester sus datos de busqueda
+                    else
+                    {
+                        // Activamos la funcion de negociacion en el otro harvester por si no se estan mirando mutuamente
+                        negoActiveTarget = false;
+                        negoTarget = Vector3.zero;
+
+                        harvesterComponent.busquedaNegociacion();
+                    }
+
+
                     continue;
                 }
 
@@ -281,11 +398,35 @@ public class HarvesterController : MonoBehaviour
     }
 
 
-
-
-    public void TransferTrigoToTractor(float amount)
+    public void busquedaNegociacion()
     {
+
+        int cuadrante = grid.GetCuadrante(gridX, gridY);
+        Vector3 position = this.transform.position;
+
+        negoTarget = grid.GetClosestTrigo(position, cuadrante);
+        if (negoTarget != Vector3.zero)
+        {
+            negoActiveTarget = true;
+        }
+
+    }
+
+
+
+    public float TransferTrigoToTractor(float amount)
+    {
+        if (trigo == 0)
+        {
+            amount = 0;
+        }
+        if (trigo < amount)
+        {
+            amount = trigo;
+        }
+
         trigo -= amount;
+        return amount;
     }
     private async void Socket()
     {
@@ -397,7 +538,7 @@ public class HarvesterController : MonoBehaviour
         // Rota el objeto hacia la dirección.
         Quaternion targetRotation = Quaternion.LookRotation(direction);
         Quaternion rotationOffset = Quaternion.Euler(0, 90, 0);  // Offset de 90 grados en el eje Y
-        transform.rotation = Quaternion.Slerp(transform.rotation, rotationOffset * targetRotation, Time.deltaTime);
+        transform.rotation = Quaternion.Slerp(transform.rotation, rotationOffset * targetRotation, Time.deltaTime * 10);
     }
 
     private State GetCurrentState()
@@ -434,6 +575,13 @@ public class HarvesterController : MonoBehaviour
     private void moveToDirection()
     {
         transform.position += direction * moveSpeed * Time.deltaTime;
+        combustible -= moveSpeed * Time.deltaTime * tasaDeGasto;
+
+
+    }
+    private void moveToOppositeDirection()
+    {
+        transform.position += -direction * moveSpeed * Time.deltaTime;
         combustible -= moveSpeed * Time.deltaTime * tasaDeGasto;
 
 
